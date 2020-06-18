@@ -1,0 +1,140 @@
+node {
+
+    def MVN_HOME
+    def BUILD_DIR_PATH
+    def LAMBDA_FUNCTION_NAME
+    def BUILD_OUTPUT_NAME
+
+    stage("init"){
+        // 현재 Jenkins Job 의 풀 경로
+        echo "Current workspace : ${WORKSPACE}"
+
+        // Maven 빌드 툴 경로 조회
+        MVN_HOME = tool 'maven3'
+        // Lambda Function Name
+        LAMBDA_FUNCTION_NAME = 'aws-lambda-for-java';
+        // 빌드 결과물 파일명
+        BUILD_OUTPUT_NAME = 'aws-lambda-for-java-1.0.0-SNAPSHOT';
+    }
+
+    // Project Git Checkout
+    stage('project-clone'){
+        git (
+            branch: "master",
+            // Optional Git Repository Credentials
+            //credentialsId: "${gitCredentialsId}",
+            url: "https://github.com/misoboy/aws-lambda-deploy.git"
+        )
+    }
+
+    // Maven Project Build
+    stage('project-build'){
+        // 빌드 하기위한 경로
+        BUILD_DIR_PATH = "${WORKSPACE}/aws-lambda-for-java";
+        dir("${BUILD_DIR_PATH}"){
+            // Maven 빌드
+            sh "'${MVN_HOME}/bin/mvn' clean package -DskipTests=true"
+        }
+    }
+
+    // AWS Lambda Deploy
+    stage("lambda-deploy"){
+        // Jenkins Credentials 의 AccessKey, SecretKey 가져오기 위함
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: "${awsCredentialsId}", secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+
+            // AWS Lambda Plugin 호출
+            step(
+                [
+                    $class: 'LambdaUploadBuildStep',
+                    lambdaUploadBuildStepVariables:
+                        [
+                            alias: '',
+                            // 배포 하기 위한 빌드 결과물 경로
+                            artifactLocation: "${BUILD_DIR_PATH}/target/${BUILD_OUTPUT_NAME}-lambda-source.zip",
+                            // AWS Access Key ID
+                            awsAccessKeyId: "${AWS_ACCESS_KEY_ID}",
+                            // AWS Secret Key
+                            awsSecretKey: "${AWS_SECRET_ACCESS_KEY}",
+                            // AWS 리전명
+                            awsRegion: 'ap-northeast-2',
+                            deadLetterQueueArn: '',
+                            description: '',
+                            // Lambda 에서 사용할 환경변수 설정
+                            environmentConfiguration: [
+                                configureEnvironment : true,
+                                kmsArn : '',
+                                environment : [
+                                    [key : 'REGION', value : 'ap-northeast-2'],
+                                ]
+                            ],
+                            // Lambda Function Name
+                            functionName: "${LAMBDA_FUNCTION_NAME}",
+                            // Lambda Function Handler 설정
+                            handler: 'LambdaHandler::handleRequest',
+                            // Lambda 메모리 설정
+                            memorySize: '256',
+                            // Lambda 수행할 역활 설정
+                            role: 'arn:aws:iam:::role/LambdaBasicRole',
+                            // Lambda 가 구동될 Runtime 설정
+                            runtime: 'java8',
+                            // Lambda 보안 그룹 설정
+                            securityGroups: 'sg-cc9f0da3',
+                            // Lambda Subnet 설정
+                            subnets: 'subnet-2116f44a,subnet-5868a823,subnet-fcaef8b0',
+                            // Lambda 최대 유효 시간 설정 초단위
+                            timeout: '60',
+                            updateMode: 'full'
+                        ]
+                ]
+            )
+        }
+    }
+
+    // AWS Lambda Event Source 설정
+    stage("lambda-event"){
+        // TODO : Lambda Event Source Configuration
+    }
+
+    // Lambda Layer 배포
+    stage("lambda-layer"){
+        // AWS 인증 수행
+        withAWS(credentials: "${awsCredentialsId}", region: 'ap-northeast-2') {
+            // 빌드 경로에서 수행
+            dir("${BUILD_DIR_PATH}"){
+                // AWS CLI를 통한 Lambda Layer 배포
+                def lambdaLayerJsonResult = sh(
+                    script: "aws lambda publish-layer-version --layer-name ${LAMBDA_FUNCTION_NAME}-layer --compatible-runtimes java8 --zip-file fileb://target/${BUILD_OUTPUT_NAME}-lambda-layer-assembly.zip",
+                    returnStdout: true
+                )
+
+                // Lambda Layer 배포 결과 Json 파싱
+                def lambdaLayerJsonObj
+                try {
+                    lambdaLayerJsonObj = readJSON text: lambdaLayerJsonResult
+                } catch (Exception e) {
+                    println "Lambda Layer Publish Failed..."
+                    currentBuild.result = 'FAILURE'
+                }
+
+                def layerVersionArn = lambdaLayerJsonObj['LayerVersionArn']
+
+                // Lambda Layer 에 대한 ARN을 Lambda Function 에 적용
+                def lambdaUpdateJsonResult = sh(
+                    script: "aws lambda update-function-configuration --function-name ${LAMBDA_FUNCTION_NAME} --layers ${layerVersionArn}",
+                    returnStdout: true
+                )
+
+                // Lambda Layer ARN 적용 결과 Json 파싱
+                def lambdaUpdateJsonObj
+                try {
+                    lambdaUpdateJsonObj = readJSON text: lambdaUpdateJsonResult
+                } catch (Exception e) {
+                    println "Lambda Update Failed..."
+                    currentBuild.result = 'FAILURE'
+                }
+
+                println lambdaUpdateJsonObj
+            }
+        }
+    }
+}
