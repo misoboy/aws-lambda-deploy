@@ -73,14 +73,14 @@ node {
                             handler: 'LambdaHandler::handleRequest',
                             // Lambda 메모리 설정
                             memorySize: '256',
-                            // Lambda 수행할 역활 설정
-                            role: 'arn:aws:iam:::role/LambdaBasicRole',
+                            // TODO : Lambda 수행할 역활 설정
+                            role: 'arn:aws:iam::619063267416:role/LambdaBasicRole',
                             // Lambda 가 구동될 Runtime 설정
                             runtime: 'java8',
                             // Lambda 보안 그룹 설정
-                            securityGroups: 'sg-cc9f0da3',
+                            securityGroups: 'sg-0087686a',
                             // Lambda Subnet 설정
-                            subnets: 'subnet-2116f44a,subnet-5868a823,subnet-fcaef8b0',
+                            subnets: 'subnet-bd431fd5,subnet-83f332f8',
                             // Lambda 최대 유효 시간 설정 초단위
                             timeout: '60',
                             updateMode: 'full'
