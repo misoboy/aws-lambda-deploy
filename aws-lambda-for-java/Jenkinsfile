@@ -74,7 +74,7 @@ node {
                             // Lambda 메모리 설정
                             memorySize: '256',
                             // TODO : Lambda 수행할 역활 설정
-                            role: 'arn:aws:iam::619063267416:role/LambdaBasicRole',
+                            role: 'arn:aws:iam::**:role/LambdaBasicRole',
                             // Lambda 가 구동될 Runtime 설정
                             runtime: 'java8',
                             // Lambda 보안 그룹 설정
@@ -92,7 +92,7 @@ node {
 
     // AWS Lambda Event Source 설정
     stage("lambda-event"){
-        // TODO : Lambda Event Source Configuration
+        // TODO : Lambda Event Source
     }
 
     // Lambda Layer 배포
