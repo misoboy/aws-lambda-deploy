@@ -1,36 +1,68 @@
 # aws-lambda-deploy
-Deploy AWS Lambda using Jenkins pipeline
 
-## Installation
-```
-git clone https://github.com/misoboy/aws-lambda-deploy.git
-```
+> Deploy AWS Lambda functions via **Jenkins Pipeline** — demonstrates Lambda deployment workflow with the AWS Lambda Jenkins plugin.
+
+[![Java](https://img.shields.io/badge/Java-8+-orange?logo=java&logoColor=white)](https://java.com)
+[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/lambda/)
+[![Jenkins](https://img.shields.io/badge/Jenkins-Pipeline-D33833?logo=jenkins&logoColor=white)](https://jenkins.io)
 
 ## Overview
 
-Jenkins provides a Lambda deployment using Pipeline.
+This project provides a reference for deploying **AWS Lambda functions from a Jenkins CI/CD pipeline**, including:
 
-Currently only Java demos are provided, and various languages will be updated in the future.
+- Maven build for Java Lambda functions
+- Jenkins Pipeline (`Jenkinsfile`) for automated deployment
+- Example Lambda functions with event handlers
 
-## Usage
+## Pipeline Flow
 
-Please refer to Jenkins file of Maven project for each language.
+```
+GitHub Push
+    └─► Jenkins Pipeline
+              ├─► mvn clean package
+              ├─► Create deployment package (.zip)
+              └─► AWS Lambda Plugin → Update Function Code
+```
 
-The overall process flow is as follows.
+## Required Jenkins Plugins
 
-<img src="/example/process.png" alt="process" width="500"/><br/>
+| Plugin | Purpose |
+|--------|---------|
+| AWS Lambda Plugin | Deploy Lambda function |
+| CloudBees AWS Credentials | Manage AWS credentials |
+| Pipeline: AWS Steps | AWS operations in pipeline |
+| Pipeline Utility Steps | File utilities |
 
-The following plugins must be installed to run Jenkins Pipeline.
+## Getting Started
 
-* AWS Lambda Plugin
-* CloudBees AWS Credentials Plugin
-* Pipeline: AWS Steps
-* Pipeline Utility Steps
+```bash
+git clone https://github.com/misoboy/aws-lambda-deploy.git
+cd aws-lambda-deploy
+```
 
-Set Credentials information to access AWS resources.
+### Build Lambda Package
 
-<img src="/example/aws_credentials.png" alt="credentials" width="500"/><br/>
+```bash
+cd aws-lambda-for-java
+mvn clean package
+```
 
-When executing Jenkins pipeline, the result will be normally executed as follows.
+### Jenkins Setup
 
-<img src="/example/jenkins_pipeline.png" alt="pipeline" width="500"/><br/>
+1. Configure AWS credentials in Jenkins (`Manage Credentials`)
+2. Create a Pipeline job pointing to this repository
+3. The `Jenkinsfile` handles build and deploy automatically
+
+## Project Structure
+
+```
+.
+├── aws-lambda-for-java/   # Java Lambda function source
+│   └── Jenkinsfile        # Jenkins pipeline definition
+└── example/
+    └── process.png        # Pipeline flow diagram
+```
+
+## License
+
+MIT
